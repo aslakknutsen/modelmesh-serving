@@ -222,6 +222,15 @@ func (r *ServingRuntimeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("Could not get pvcs: %w", err)
 	}
 
+	annotationMap := cfg.RuntimePodAnnotations
+	n := &corev1.Namespace{}
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: req.Namespace}, n); err != nil {
+		return ctrl.Result{}, err
+	}
+	if meshEnabled, found := n.Annotations["opendatahub.io/service-mesh"]; found {
+		annotationMap["opendatahub.io/service-mesh"] = meshEnabled
+	}
+
 	// construct the deployment
 	mmDeployment := modelmesh.Deployment{
 		ServiceName:                cfg.InferenceServiceName,
@@ -256,7 +265,7 @@ func (r *ServingRuntimeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		ServiceAccountName:  cfg.ServiceAccountName,
 		EnableAccessLogging: cfg.EnableAccessLogging,
 		Client:              r.Client,
-		AnnotationsMap:      cfg.RuntimePodAnnotations,
+		AnnotationsMap:      annotationMap,
 		LabelsMap:           cfg.RuntimePodLabels,
 		ImagePullSecrets:    cfg.ImagePullSecrets,
 	}
